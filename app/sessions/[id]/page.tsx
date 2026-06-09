@@ -355,12 +355,37 @@ export default function SessionDetailPage() {
                 <Layers className="w-4 h-4" />{session.bootcamp.name}
               </span>
             )}
+          </div>
+
+          {/* Delivered by */}
+          <div>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Delivered by</p>
             {session.trainers?.length ? (
-              <span className="flex items-center gap-1">
-                <Users className="w-4 h-4" />
-                {session.trainers.map((t) => t.name).join(', ')}
-              </span>
-            ) : null}
+              <div className="flex flex-wrap gap-3">
+                {session.trainers.map((t) => {
+                  const colors = ['bg-blue-500','bg-orange-400','bg-purple-500','bg-emerald-500','bg-red-500','bg-cyan-500']
+                  let h = 0; for (let i = 0; i < t.name.length; i++) h = t.name.charCodeAt(i) + ((h << 5) - h)
+                  const color = colors[Math.abs(h) % colors.length]
+                  return (
+                    <div key={t.id} className="flex items-center gap-2.5 bg-gray-50 border border-gray-100 rounded-xl px-3 py-2">
+                      <div className={`w-8 h-8 rounded-full ${color} flex items-center justify-center shrink-0`}>
+                        <span className="text-white font-bold text-sm">{t.name.charAt(0).toUpperCase()}</span>
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-800 leading-tight">{t.name}</p>
+                        {t.credentials && (
+                          <p className="text-xs text-blue-600">{t.credentials}</p>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400 italic">No trainer assigned —{' '}
+                <button type="button" onClick={startEdit} className="text-blue-500 hover:underline not-italic">add one</button>
+              </p>
+            )}
           </div>
           {session.topic_summary && (
             <p className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3">{session.topic_summary}</p>
