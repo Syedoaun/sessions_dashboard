@@ -38,7 +38,17 @@ export function FeedbackCharts({ stats }: { stats: FeedbackStats }) {
       <ChartCard title="Understanding Level">
         <ResponsiveContainer width="100%" height={220}>
           <PieChart>
-            <Pie data={understandingData} dataKey="value" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }: { name?: string; percent?: number }) => `${name ?? ''} ${((percent ?? 0) * 100).toFixed(0)}%`}>
+            <Pie
+              data={understandingData}
+              dataKey="value"
+              cx="50%"
+              cy="50%"
+              outerRadius={80}
+              label={({ name, percent }: { name?: string; percent?: number }) =>
+                percent ? `${name ?? ''} ${((percent) * 100).toFixed(0)}%` : ''
+              }
+              labelLine={false}
+            >
               {understandingData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
             </Pie>
             <Tooltip />
@@ -49,7 +59,17 @@ export function FeedbackCharts({ stats }: { stats: FeedbackStats }) {
       <ChartCard title="Trainer Rating">
         <ResponsiveContainer width="100%" height={220}>
           <PieChart>
-            <Pie data={trainerData} dataKey="value" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }: { name?: string; percent?: number }) => `${name ?? ''} ${((percent ?? 0) * 100).toFixed(0)}%`}>
+            <Pie
+              data={trainerData}
+              dataKey="value"
+              cx="50%"
+              cy="50%"
+              outerRadius={80}
+              label={({ name, percent }: { name?: string; percent?: number }) =>
+                percent ? `${name ?? ''} ${((percent) * 100).toFixed(0)}%` : ''
+              }
+              labelLine={false}
+            >
               {trainerData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
             </Pie>
             <Tooltip />

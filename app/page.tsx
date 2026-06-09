@@ -1,17 +1,21 @@
 import { supabase } from '@/lib/supabase/client'
 import Link from 'next/link'
-import { CalendarDays, Users, MessageSquare, ArrowRight, ChevronRight } from 'lucide-react'
+import { CalendarDays, Users, MessageSquare, ArrowRight, ChevronRight, MapPin, BarChart2 } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
+import type { Session } from '@/types'
+import SessionMapWrapper from '@/components/map/SessionMapWrapper'
+import { CompactTrendChart } from '@/components/charts/TrendChart'
+import type { TrendPoint } from '@/components/charts/TrendChart'
 
 export const revalidate = 0
 
 const CARD_COLORS = [
-  { bg: 'bg-blue-500',   text: 'text-white', bar: 'bg-blue-400'   },
-  { bg: 'bg-orange-400', text: 'text-white', bar: 'bg-orange-300'  },
-  { bg: 'bg-red-500',    text: 'text-white', bar: 'bg-red-400'     },
-  { bg: 'bg-cyan-500',   text: 'text-white', bar: 'bg-cyan-400'    },
-  { bg: 'bg-purple-500', text: 'text-white', bar: 'bg-purple-400'  },
-  { bg: 'bg-emerald-500',text: 'text-white', bar: 'bg-emerald-400' },
+  { bg: 'bg-blue-500',    text: 'text-white', bar: 'bg-blue-400'    },
+  { bg: 'bg-orange-400',  text: 'text-white', bar: 'bg-orange-300'  },
+  { bg: 'bg-red-500',     text: 'text-white', bar: 'bg-red-400'     },
+  { bg: 'bg-cyan-500',    text: 'text-white', bar: 'bg-cyan-400'    },
+  { bg: 'bg-purple-500',  text: 'text-white', bar: 'bg-purple-400'  },
+  { bg: 'bg-emerald-500', text: 'text-white', bar: 'bg-emerald-400' },
 ]
 
 function colorFor(str: string) {
@@ -21,15 +25,26 @@ function colorFor(str: string) {
 }
 
 export default async function DashboardPage() {
-  const [sessionsRes, attendanceRes, feedbackRes, recentFeedbackRes] = await Promise.all([
+  const sixMonthsAgo = new Date()
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+  const sixMonthsAgoStr = sixMonthsAgo.toISOString().slice(0, 10)
+
+  const [sessionsRes, attendanceRes, feedbackRes, recentFeedbackRes, mapSessionsRes, citiesRes, trendSessionsRes, allFeedbackRes] = await Promise.all([
     supabase
       .from('sessions')
-      .select(`*, trainers:session_trainers(trainer:trainers(name)), attendance_count:attendance(count), feedback_count:feedback(count)`)
+      .select(`*, trainers:session_trainers(trainer:trainers(name)), bootcamp:bootcamps(name), attendance_count:attendance(count), feedback_count:feedback(count)`)
       .order('date', { ascending: false })
       .limit(8),
     supabase.from('attendance').select('id', { count: 'exact', head: true }),
     supabase.from('feedback').select('id', { count: 'exact', head: true }),
     supabase.from('feedback').select('student_name, class, trainer_rating, favourite_part').order('created_at', { ascending: false }).limit(5),
+    supabase
+      .from('sessions')
+      .select('id, topic, school, city, date, latitude, longitude, bootcamp:bootcamps(name), trainers:session_trainers(trainer:trainers(name)), attendance_count:attendance(count), feedback_count:feedback(count)')
+      .not('latitude', 'is', null),
+    supabase.from('sessions').select('city').not('city', 'is', null).not('city', 'eq', ''),
+    supabase.from('sessions').select('date, attendance_count:attendance(count)').gte('date', sixMonthsAgoStr).order('date', { ascending: true }),
+    supabase.from('feedback').select('trainer_rating, understanding_level, would_attend_more'),
   ])
 
   const sessions = (sessionsRes.data ?? []).map((s: any) => ({
@@ -39,27 +54,72 @@ export default async function DashboardPage() {
     feedback_count: s.feedback_count?.[0]?.count ?? 0,
   }))
 
+  const mapSessions: Session[] = (mapSessionsRes.data ?? []).map((s: any) => ({
+    ...s,
+    trainers: s.trainers?.map((t: any) => t.trainer).filter(Boolean) ?? [],
+    bootcamp: s.bootcamp ?? null,
+    attendance_count: s.attendance_count?.[0]?.count ?? 0,
+    feedback_count: s.feedback_count?.[0]?.count ?? 0,
+    location: null,
+    topic_summary: null,
+    bootcamp_id: null,
+    created_at: '',
+  }))
+
   const totalStudents = attendanceRes.count ?? 0
   const totalFeedback = feedbackRes.count ?? 0
   const recentFeedback = recentFeedbackRes.data ?? []
+  const citiesCount = new Set((citiesRes.data ?? []).map((r: any) => r.city)).size
+
+  // Compact trend: last 6 months
+  const trendMonths: string[] = []
+  const nowD = new Date()
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(nowD.getFullYear(), nowD.getMonth() - i, 1)
+    trendMonths.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
+  }
+  const trendByMonth: Record<string, { sessions: number; students: number }> = {}
+  for (const m of trendMonths) trendByMonth[m] = { sessions: 0, students: 0 }
+  for (const s of (trendSessionsRes.data ?? []) as any[]) {
+    const m = (s.date as string).slice(0, 7)
+    if (trendByMonth[m]) {
+      trendByMonth[m].sessions++
+      trendByMonth[m].students += s.attendance_count?.[0]?.count ?? 0
+    }
+  }
+  const trendData: TrendPoint[] = trendMonths.map(m => ({
+    month: new Date(m + '-01').toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+    sessions: trendByMonth[m].sessions,
+    students: trendByMonth[m].students,
+  }))
+
+  // Feedback health micro-stats
+  const allFeedback = (allFeedbackRes.data ?? []) as any[]
+  const fbTotal = allFeedback.length
+  const excellentPct   = fbTotal > 0 ? Math.round((allFeedback.filter((f: any) => f.trainer_rating === 'excellent').length / fbTotal) * 100) : null
+  const understoodPct  = fbTotal > 0 ? Math.round(((allFeedback.filter((f: any) => f.understanding_level === 'understand_basics').length + allFeedback.filter((f: any) => f.understanding_level === 'need_more_practice').length) / fbTotal) * 100) : null
+  const wantMorePct    = fbTotal > 0 ? Math.round((allFeedback.filter((f: any) => f.would_attend_more === 'yes').length / fbTotal) * 100) : null
 
   const cardSessions = sessions.slice(0, 4)
   const listSessions = sessions.slice(0, 6)
 
   return (
     <div className="space-y-6">
-      {/* Welcome Banner */}
-      <div className="relative bg-gradient-to-r from-blue-600 via-blue-500 to-blue-400 rounded-2xl px-8 py-7 text-white overflow-hidden">
-        <div className="relative z-10">
-          <h1 className="text-3xl font-bold mb-1">Welcome to SessionsHub!</h1>
-          <p className="text-blue-100 text-base">Education is the passport to the future — track every session, every student.</p>
+      {/* Hero Banner */}
+      <div className="relative bg-gradient-to-r from-blue-700 via-blue-600 to-blue-500 rounded-2xl px-8 py-8 text-white overflow-hidden">
+        <div className="relative z-10 max-w-lg">
+          <p className="text-blue-200 text-xs font-semibold uppercase tracking-widest mb-2">Global Shapers Islamabad</p>
+          <h1 className="text-2xl font-bold leading-tight mb-2">
+            Career Counseling for All
+          </h1>
+          <p className="text-blue-100 text-sm leading-relaxed">
+            Every child deserves guidance regardless of economic and geographic constraints
+          </p>
         </div>
-        {/* Decorative shapes */}
         <div className="absolute right-0 top-0 w-72 h-full pointer-events-none">
           <div className="absolute -right-10 -top-10 w-56 h-56 bg-white/10 rounded-full" />
           <div className="absolute right-16 top-4  w-36 h-36 bg-white/10 rounded-full" />
           <div className="absolute right-4  bottom-2 w-24 h-24 bg-white/10 rounded-full" />
-          {/* Simple person SVG */}
           <svg className="absolute right-10 top-1/2 -translate-y-1/2 w-28 h-28 opacity-90" viewBox="0 0 110 110" fill="none">
             <circle cx="55" cy="28" r="14" fill="white" />
             <path d="M40 42 C36 58 42 80 55 80 C68 80 74 58 70 42 Z" fill="white" />
@@ -74,12 +134,13 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Quick stats row */}
-      <div className="grid grid-cols-3 gap-4">
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total Sessions',    value: sessions.length,  icon: CalendarDays, color: 'text-blue-600',    bg: 'bg-blue-50'    },
-          { label: 'Students Reached',  value: totalStudents,    icon: Users,        color: 'text-orange-500',  bg: 'bg-orange-50'  },
-          { label: 'Feedback Forms',    value: totalFeedback,    icon: MessageSquare,color: 'text-purple-600',  bg: 'bg-purple-50'  },
+          { label: 'Total Sessions',   value: sessions.length, icon: CalendarDays, color: 'text-blue-600',   bg: 'bg-blue-50'   },
+          { label: 'Students Reached', value: totalStudents,   icon: Users,        color: 'text-orange-500', bg: 'bg-orange-50' },
+          { label: 'Feedback Forms',   value: totalFeedback,   icon: MessageSquare,color: 'text-purple-600', bg: 'bg-purple-50' },
+          { label: 'Cities Covered',   value: citiesCount,     icon: MapPin,       color: 'text-emerald-600',bg: 'bg-emerald-50'},
         ].map(({ label, value, icon: Icon, color, bg }) => (
           <div key={label} className="bg-white rounded-xl p-5 flex items-center gap-4 shadow-sm">
             <div className={`${bg} p-3 rounded-xl`}>
@@ -93,7 +154,23 @@ export default async function DashboardPage() {
         ))}
       </div>
 
-      {/* Session Cards — "Current Running Sessions" style */}
+      {/* Feedback health micro-row */}
+      {fbTotal > 0 && (
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { label: 'Excellent trainer rating', value: excellentPct, color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-100' },
+            { label: 'Understood basics or more', value: understoodPct, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' },
+            { label: 'Want to attend again', value: wantMorePct, color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-100' },
+          ].map(({ label, value, color, bg, border }) => (
+            <div key={label} className={`${bg} border ${border} rounded-xl px-4 py-3 flex items-center gap-3`}>
+              <p className={`text-2xl font-bold ${color}`}>{value}%</p>
+              <p className="text-xs text-gray-500 leading-tight">{label}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Recent session cards */}
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-semibold text-gray-700">Recent Sessions</h2>
@@ -141,9 +218,8 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Bottom section — 2 columns */}
+      {/* Bottom section */}
       <div className="grid grid-cols-5 gap-6">
-        {/* Sessions List — like "Upcoming Lessons" */}
         <div className="col-span-3 bg-white rounded-xl shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
             <h3 className="font-semibold text-gray-700">All Sessions</h3>
@@ -163,7 +239,9 @@ export default async function DashboardPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-800 truncate">{s.topic}</p>
-                    <p className="text-xs text-gray-400">{s.school} · {formatDate(s.date)}</p>
+                    <p className="text-xs text-gray-400">
+                      {s.school}{s.city ? ` · ${s.city}` : ''} · {formatDate(s.date)}
+                    </p>
                   </div>
                   <div className="flex items-center gap-3 text-xs text-gray-400 shrink-0">
                     <span className="flex items-center gap-1"><Users className="w-3 h-3" />{s.attendance_count}</span>
@@ -175,7 +253,6 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* Recent Feedback — like "Recent Notifications" */}
         <div className="col-span-2 bg-white rounded-xl shadow-sm overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-50">
             <h3 className="font-semibold text-gray-700">Recent Feedback</h3>
@@ -188,7 +265,7 @@ export default async function DashboardPage() {
               const ratingColor =
                 f.trainer_rating === 'excellent' ? 'bg-green-500' :
                 f.trainer_rating === 'average'   ? 'bg-yellow-400' :
-                f.trainer_rating === 'poor'      ? 'bg-red-400' : 'bg-gray-300'
+                f.trainer_rating === 'poor'       ? 'bg-red-400' : 'bg-gray-300'
               return (
                 <div key={i} className="flex items-start gap-3 px-5 py-3.5">
                   <div className={`w-1 rounded-full self-stretch min-h-[2.5rem] ${ratingColor}`} />
@@ -208,6 +285,31 @@ export default async function DashboardPage() {
             })}
           </div>
         </div>
+      </div>
+
+      {/* Activity Trend */}
+      <div className="bg-white rounded-xl shadow-sm p-5">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <BarChart2 className="w-4 h-4 text-blue-500" />
+            <h2 className="font-semibold text-gray-700">Sessions per Month</h2>
+            <span className="text-xs text-gray-400">last 6 months</span>
+          </div>
+          <Link href="/analytics" className="text-xs text-blue-600 hover:underline flex items-center gap-1">
+            Full Analytics <ArrowRight className="w-3 h-3" />
+          </Link>
+        </div>
+        <CompactTrendChart data={trendData} />
+      </div>
+
+      {/* Pakistan Map */}
+      <div className="bg-white rounded-xl shadow-sm p-5 space-y-3">
+        <div className="flex items-center gap-2">
+          <MapPin className="w-4 h-4 text-blue-500" />
+          <h2 className="font-semibold text-gray-700">Sessions Across Pakistan</h2>
+          <span className="ml-auto text-xs text-gray-400">{mapSessions.length} plotted</span>
+        </div>
+        <SessionMapWrapper sessions={mapSessions} />
       </div>
     </div>
   )

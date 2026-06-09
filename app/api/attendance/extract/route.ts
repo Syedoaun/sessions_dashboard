@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase/client'
+import { supabaseAdmin as supabase } from '@/lib/supabase/admin'
 import { extractAttendance } from '@/lib/extract'
 
 export async function POST(req: NextRequest) {
@@ -8,6 +8,7 @@ export async function POST(req: NextRequest) {
   const formData = await req.formData()
   const file = formData.get('file') as File
   const sessionId = formData.get('session_id') as string
+  const uploadedBy = (formData.get('uploaded_by') as string) || null
 
   if (!file || !sessionId) {
     return NextResponse.json({ error: 'file and session_id are required' }, { status: 400 })
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
     }, { status: 500 })
   }
 
-  const rows = records.map((r) => ({ ...r, session_id: sessionId }))
+  const rows = records.map((r) => ({ ...r, session_id: sessionId, uploaded_by: uploadedBy }))
   const { data, error } = await supabase.from('attendance').insert(rows).select()
 
   if (error) {

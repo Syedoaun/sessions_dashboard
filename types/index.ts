@@ -1,3 +1,10 @@
+export type Bootcamp = {
+  id: string
+  name: string
+  description: string | null
+  created_at: string
+}
+
 export type Trainer = {
   id: string
   name: string
@@ -12,8 +19,13 @@ export type Session = {
   date: string
   school: string
   location: string | null
+  city: string | null
+  latitude: number | null
+  longitude: number | null
   topic: string
   topic_summary: string | null
+  bootcamp_id: string | null
+  bootcamp?: Bootcamp | null
   created_at: string
   trainers?: Trainer[]
   attendance_count?: number
@@ -26,6 +38,7 @@ export type Attendance = {
   student_name: string
   class: string
   has_signature: boolean
+  uploaded_by: string | null
   created_at: string
 }
 
@@ -40,6 +53,7 @@ export type Feedback = {
   learned_something: 'yes' | 'not_much' | 'no' | null
   favourite_part: string | null
   additional_comments: string | null
+  uploaded_by: string | null
   created_at: string
 }
 
@@ -49,6 +63,7 @@ export type Media = {
   type: 'image' | 'video'
   file_url: string
   file_name: string
+  uploaded_by: string | null
   uploaded_at: string
 }
 

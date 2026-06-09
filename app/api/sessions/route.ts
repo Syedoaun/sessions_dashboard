@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase/client'
+import { supabaseAdmin as supabase } from '@/lib/supabase/admin'
 
 export async function GET() {
   const { data, error } = await supabase
@@ -7,6 +7,7 @@ export async function GET() {
     .select(`
       *,
       trainers:session_trainers(trainer:trainers(*)),
+      bootcamp:bootcamps(*),
       attendance_count:attendance(count),
       feedback_count:feedback(count)
     `)

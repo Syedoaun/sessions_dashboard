@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Plus, Users, MessageSquare, CalendarDays, ChevronRight } from 'lucide-react'
+import { Plus, Users, MessageSquare, CalendarDays, ChevronRight, X } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 
 export const revalidate = 0
@@ -16,15 +16,29 @@ function colorFor(str: string) {
   return COLORS[Math.abs(h) % COLORS.length]
 }
 
-export default async function SessionsPage() {
-  const { data: sessions } = await supabase
+export default async function SessionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>
+}) {
+  const { q } = await searchParams
+  const search = q?.trim() ?? ''
+
+  let query = supabase
     .from('sessions')
-    .select(`*, trainers:session_trainers(trainer:trainers(name)), attendance_count:attendance(count), feedback_count:feedback(count)`)
+    .select(`*, trainers:session_trainers(trainer:trainers(name)), bootcamp:bootcamps(name), attendance_count:attendance(count), feedback_count:feedback(count)`)
     .order('date', { ascending: false })
+
+  if (search) {
+    query = query.or(`topic.ilike.%${search}%,school.ilike.%${search}%,city.ilike.%${search}%`)
+  }
+
+  const { data: sessions } = await query
 
   const list = (sessions ?? []).map((s: any) => ({
     ...s,
     trainers: s.trainers?.map((t: any) => t.trainer?.name).filter(Boolean) ?? [],
+    bootcamp: s.bootcamp?.name ?? null,
     attendance_count: s.attendance_count?.[0]?.count ?? 0,
     feedback_count:   s.feedback_count?.[0]?.count ?? 0,
   }))
@@ -35,7 +49,9 @@ export default async function SessionsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-gray-800">All Sessions</h2>
-          <p className="text-sm text-gray-400 mt-0.5">{list.length} sessions total</p>
+          <p className="text-sm text-gray-400 mt-0.5">
+            {search ? `${list.length} result${list.length !== 1 ? 's' : ''} for "${search}"` : `${list.length} sessions total`}
+          </p>
         </div>
         <Link href="/sessions/new">
           <Button className="gap-2 bg-blue-600 hover:bg-blue-700">
@@ -44,10 +60,22 @@ export default async function SessionsPage() {
         </Link>
       </div>
 
+      {/* Active search banner */}
+      {search && (
+        <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 text-sm text-blue-700">
+          <span>Showing results for <strong>"{search}"</strong></span>
+          <Link href="/sessions" className="ml-auto flex items-center gap-1 text-blue-500 hover:text-blue-700">
+            <X className="w-3.5 h-3.5" /> Clear
+          </Link>
+        </div>
+      )}
+
       {/* List */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         {list.length === 0 && (
-          <p className="p-10 text-center text-sm text-gray-400">No sessions yet.</p>
+          <p className="p-10 text-center text-sm text-gray-400">
+            {search ? `No sessions match "${search}".` : 'No sessions yet.'}
+          </p>
         )}
         <div className="divide-y divide-gray-50">
           {list.map((s) => {
@@ -55,27 +83,33 @@ export default async function SessionsPage() {
             return (
               <Link key={s.id} href={`/sessions/${s.id}`}
                 className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50 transition-colors group">
-                {/* Color icon */}
                 <div className={`w-10 h-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>
                   <CalendarDays className="w-5 h-5 text-white" />
                 </div>
 
-                {/* Main info */}
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-800 truncate">{s.topic}</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-semibold text-gray-800 truncate">{s.topic}</p>
+                    {s.bootcamp && (
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-600 shrink-0">
+                        {s.bootcamp}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-sm text-gray-400 mt-0.5">
-                    {s.school}{s.trainers.length ? ` · ${s.trainers.join(', ')}` : ''}
+                    {s.school}
+                    {s.city ? ` · ${s.city}` : ''}
+                    {s.trainers.length ? ` · ${s.trainers.join(', ')}` : ''}
                   </p>
                 </div>
 
-                {/* Stats */}
                 <div className="flex items-center gap-5 text-sm text-gray-400 shrink-0">
                   <div className="text-center hidden sm:block">
                     <p className="text-xs text-gray-300">Date</p>
                     <p className="font-medium text-gray-600">{formatDate(s.date)}</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-xs text-gray-300">Attended</p>
+                    <p className="text-xs text-gray-300">Students</p>
                     <p className="font-semibold text-gray-700 flex items-center gap-1 justify-center">
                       <Users className="w-3.5 h-3.5" />{s.attendance_count}
                     </p>

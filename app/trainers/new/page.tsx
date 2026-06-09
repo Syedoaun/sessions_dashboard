@@ -8,18 +8,24 @@ import { Textarea } from '@/components/ui/textarea'
 export default function NewTrainerPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const [form, setForm] = useState({ name: '', credentials: '', bio: '' })
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
+    setError('')
     const res = await fetch('/api/trainers', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form),
     })
+    const data = await res.json()
     if (res.ok) router.push('/trainers')
-    else setLoading(false)
+    else {
+      setError(data.error ?? 'Failed to add trainer. Please try again.')
+      setLoading(false)
+    }
   }
 
   return (
@@ -40,10 +46,15 @@ export default function NewTrainerPage() {
         </div>
         <div className="space-y-1.5">
           <label className="text-sm font-medium text-gray-700">Bio</label>
-          <Textarea placeholder="Brief background about the trainer..." rows={3} value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} />
+          <Textarea placeholder="Brief background about the trainer…" rows={3} value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} />
         </div>
-        <Button type="submit" disabled={loading} className="w-full">
-          {loading ? 'Saving...' : 'Add Trainer'}
+        {error && (
+          <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2">
+            {error}
+          </div>
+        )}
+        <Button type="submit" disabled={loading} className="w-full bg-blue-600 hover:bg-blue-700">
+          {loading ? 'Saving…' : 'Add Trainer'}
         </Button>
       </form>
     </div>

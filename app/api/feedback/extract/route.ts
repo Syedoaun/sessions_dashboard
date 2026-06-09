@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase/client'
+import { supabaseAdmin as supabase } from '@/lib/supabase/admin'
 import { extractFeedback } from '@/lib/extract'
 
 export async function POST(req: NextRequest) {
   const formData = await req.formData()
   const files = formData.getAll('files') as File[]
   const sessionId = formData.get('session_id') as string
+  const uploadedBy = (formData.get('uploaded_by') as string) || null
 
   if (!files.length || !sessionId) {
     return NextResponse.json({ error: 'files and session_id are required' }, { status: 400 })
@@ -49,6 +50,7 @@ export async function POST(req: NextRequest) {
   const rows = succeeded.map((r) => ({
     ...(r as PromiseFulfilledResult<any>).value,
     session_id: sessionId,
+    uploaded_by: uploadedBy,
   }))
 
   const { data, error } = await supabase.from('feedback').insert(rows).select()

@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase/client'
+import { supabaseAdmin as supabase } from '@/lib/supabase/admin'
 
 export async function POST(req: NextRequest) {
   const formData = await req.formData()
   const files = formData.getAll('files') as File[]
   const sessionId = formData.get('session_id') as string
+  const uploadedBy = (formData.get('uploaded_by') as string) || null
 
   if (!files.length || !sessionId) {
     return NextResponse.json({ error: 'files and session_id are required' }, { status: 400 })
   }
 
-  const uploaded = await Promise.all(
+  const results = await Promise.allSettled(
     files.map(async (file) => {
-      const ext = file.name.split('.').pop()
-      const path = `${sessionId}/${Date.now()}-${file.name}`
+      const path = `${sessionId}/${Date.now()}-${Math.random().toString(36).slice(2)}-${file.name}`
       const buffer = await file.arrayBuffer()
 
       const { error: uploadError } = await supabase.storage
@@ -25,12 +25,20 @@ export async function POST(req: NextRequest) {
       const { data: urlData } = supabase.storage.from('session-media').getPublicUrl(path)
 
       const type = file.type.startsWith('video/') ? 'video' : 'image'
-      return { session_id: sessionId, type, file_url: urlData.publicUrl, file_name: file.name }
+      return { session_id: sessionId, type, file_url: urlData.publicUrl, file_name: file.name, uploaded_by: uploadedBy }
     })
   )
 
-  const { data, error } = await supabase.from('media').insert(uploaded).select()
+  const succeeded = results.filter((r) => r.status === 'fulfilled')
+  const failed = results.filter((r) => r.status === 'rejected').length
+
+  if (succeeded.length === 0) {
+    return NextResponse.json({ error: 'All file uploads failed' }, { status: 500 })
+  }
+
+  const rows = succeeded.map((r) => (r as PromiseFulfilledResult<any>).value)
+  const { data, error } = await supabase.from('media').insert(rows).select()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  return NextResponse.json({ uploaded: data?.length ?? 0, media: data })
+  return NextResponse.json({ uploaded: data?.length ?? 0, failed, media: data })
 }

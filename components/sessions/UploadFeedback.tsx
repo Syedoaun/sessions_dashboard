@@ -4,7 +4,7 @@ import { CheckCircle, Loader2, Upload, AlertCircle, X } from 'lucide-react'
 
 type State = 'idle' | 'uploading' | 'done' | 'error'
 
-export function UploadFeedback({ sessionId, onDone }: { sessionId: string; onDone: () => void }) {
+export function UploadFeedback({ sessionId, onDone, uploadedBy }: { sessionId: string; onDone: () => void; uploadedBy: string }) {
   const [state, setState] = useState<State>('idle')
   const [previews, setPreviews] = useState<string[]>([])
   const [result, setResult] = useState<{ inserted: number; failed: number } | null>(null)
@@ -22,6 +22,7 @@ export function UploadFeedback({ sessionId, onDone }: { sessionId: string; onDon
     const form = new FormData()
     files.forEach((f) => form.append('files', f))
     form.append('session_id', sessionId)
+    if (uploadedBy) form.append('uploaded_by', uploadedBy)
 
     const res = await fetch('/api/feedback/extract', { method: 'POST', body: form })
     const data = await res.json().catch(() => ({ error: 'Server error — check terminal' }))
@@ -49,12 +50,17 @@ export function UploadFeedback({ sessionId, onDone }: { sessionId: string; onDon
   return (
     <div className="space-y-3">
       <label className={`
-        relative flex flex-col items-center justify-center gap-3 w-full rounded-xl border-2 border-dashed p-6 text-center cursor-pointer transition-colors
-        ${state === 'uploading' ? 'border-blue-300 bg-blue-50' : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'}
+        relative flex flex-col items-center justify-center gap-3 w-full rounded-xl border-2 border-dashed p-6 text-center transition-colors
+        ${!uploadedBy ? 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-60' : state === 'uploading' ? 'border-blue-300 bg-blue-50 cursor-wait' : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50 cursor-pointer'}
       `}>
-        <input type="file" accept="image/*" multiple className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleFiles} disabled={state === 'uploading'} />
+        <input type="file" accept="image/*" multiple className="absolute inset-0 opacity-0 cursor-pointer" onChange={handleFiles} disabled={state === 'uploading' || !uploadedBy} />
 
-        {state === 'uploading' ? (
+        {!uploadedBy ? (
+          <>
+            <Upload className="w-7 h-7 text-gray-300" />
+            <p className="text-sm text-gray-400">Select who's uploading above first</p>
+          </>
+        ) : state === 'uploading' ? (
           <>
             <Loader2 className="w-7 h-7 text-blue-500 animate-spin" />
             <p className="text-sm text-blue-600 font-medium">Saving &amp; reading {previews.length} form{previews.length !== 1 ? 's' : ''}…</p>
