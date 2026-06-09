@@ -106,7 +106,7 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Hero Banner */}
-      <div className="relative bg-gradient-to-r from-blue-700 via-blue-600 to-blue-500 rounded-2xl px-8 py-8 text-white overflow-hidden">
+      <div className="relative bg-gradient-to-r from-blue-700 via-blue-600 to-blue-500 rounded-2xl px-5 py-6 sm:px-8 sm:py-8 text-white overflow-hidden">
         <div className="relative z-10 max-w-lg">
           <p className="text-blue-200 text-xs font-semibold uppercase tracking-widest mb-2">Global Shapers Islamabad</p>
           <h1 className="text-2xl font-bold leading-tight mb-2">
@@ -116,7 +116,7 @@ export default async function DashboardPage() {
             Every child deserves guidance regardless of economic and geographic constraints
           </p>
         </div>
-        <div className="absolute right-0 top-0 w-72 h-full pointer-events-none">
+        <div className="absolute right-0 top-0 w-72 h-full pointer-events-none hidden sm:block">
           <div className="absolute -right-10 -top-10 w-56 h-56 bg-white/10 rounded-full" />
           <div className="absolute right-16 top-4  w-36 h-36 bg-white/10 rounded-full" />
           <div className="absolute right-4  bottom-2 w-24 h-24 bg-white/10 rounded-full" />
@@ -156,7 +156,7 @@ export default async function DashboardPage() {
 
       {/* Feedback health micro-row */}
       {fbTotal > 0 && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
             { label: 'Excellent trainer rating', value: excellentPct, color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-100' },
             { label: 'Understood basics or more', value: understoodPct, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' },
@@ -178,7 +178,7 @@ export default async function DashboardPage() {
             View All <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {cardSessions.length === 0 && (
             <div className="col-span-4 bg-white rounded-xl p-8 text-center text-sm text-gray-400 shadow-sm">
               No sessions yet. <Link href="/sessions/new" className="text-blue-600 underline">Add one</Link>
@@ -219,8 +219,8 @@ export default async function DashboardPage() {
       </div>
 
       {/* Bottom section */}
-      <div className="grid grid-cols-5 gap-6">
-        <div className="col-span-3 bg-white rounded-xl shadow-sm overflow-hidden">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        <div className="lg:col-span-3 bg-white rounded-xl shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
             <h3 className="font-semibold text-gray-700">All Sessions</h3>
             <Link href="/sessions" className="text-xs text-blue-600 hover:underline">View All</Link>
@@ -253,7 +253,7 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        <div className="col-span-2 bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-50">
             <h3 className="font-semibold text-gray-700">Recent Feedback</h3>
           </div>

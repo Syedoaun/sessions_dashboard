@@ -33,20 +33,16 @@ export function TrainerLeaderboard({ trainers }: { trainers: TrainerStat[] }) {
             <span className="text-white font-bold text-xs">{t.name.charAt(0).toUpperCase()}</span>
           </div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between gap-2 mb-1">
-              <div className="min-w-0">
-                <span className="text-sm font-semibold text-gray-800">{t.name}</span>
+            <div className="flex items-start justify-between gap-2 mb-1">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-gray-800 truncate">{t.name}</p>
                 {t.credentials && (
-                  <span className="text-xs text-blue-600 ml-2 truncate">{t.credentials}</span>
+                  <p className="text-xs text-blue-600 truncate">{t.credentials}</p>
                 )}
               </div>
-              <div className="flex gap-4 text-xs text-gray-500 shrink-0">
-                <span>
-                  <span className="font-semibold text-gray-700">{t.sessionCount}</span> sessions
-                </span>
-                <span>
-                  <span className="font-semibold text-gray-700">{t.studentCount}</span> students
-                </span>
+              <div className="flex flex-col items-end text-xs text-gray-500 shrink-0">
+                <span><span className="font-semibold text-gray-700">{t.sessionCount}</span> sessions</span>
+                <span><span className="font-semibold text-gray-700">{t.studentCount}</span> students</span>
               </div>
             </div>
             <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">

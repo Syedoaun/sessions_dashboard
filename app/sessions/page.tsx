@@ -46,16 +46,16 @@ export default async function SessionsPage({
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
           <h2 className="text-xl font-bold text-gray-800">All Sessions</h2>
           <p className="text-sm text-gray-400 mt-0.5">
             {search ? `${list.length} result${list.length !== 1 ? 's' : ''} for "${search}"` : `${list.length} sessions total`}
           </p>
         </div>
-        <Link href="/sessions/new">
+        <Link href="/sessions/new" className="shrink-0">
           <Button className="gap-2 bg-blue-600 hover:bg-blue-700">
-            <Plus className="w-4 h-4" /> New Session
+            <Plus className="w-4 h-4" /> <span className="hidden sm:inline">New Session</span><span className="sm:hidden">New</span>
           </Button>
         </Link>
       </div>
@@ -103,18 +103,18 @@ export default async function SessionsPage({
                   </p>
                 </div>
 
-                <div className="flex items-center gap-5 text-sm text-gray-400 shrink-0">
+                <div className="flex items-center gap-3 sm:gap-5 text-sm text-gray-400 shrink-0">
                   <div className="text-center hidden sm:block">
                     <p className="text-xs text-gray-300">Date</p>
                     <p className="font-medium text-gray-600">{formatDate(s.date)}</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-xs text-gray-300">Students</p>
+                    <p className="text-xs text-gray-300 hidden sm:block">Students</p>
                     <p className="font-semibold text-gray-700 flex items-center gap-1 justify-center">
                       <Users className="w-3.5 h-3.5" />{s.attendance_count}
                     </p>
                   </div>
-                  <div className="text-center">
+                  <div className="text-center hidden sm:block">
                     <p className="text-xs text-gray-300">Feedback</p>
                     <p className="font-semibold text-gray-700 flex items-center gap-1 justify-center">
                       <MessageSquare className="w-3.5 h-3.5" />{s.feedback_count}

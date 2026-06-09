@@ -1,8 +1,7 @@
 import type { Metadata } from 'next'
 import { Geist } from 'next/font/google'
 import './globals.css'
-import { Sidebar } from '@/components/dashboard/Sidebar'
-import { TopBar } from '@/components/dashboard/TopBar'
+import { LayoutShell } from '@/components/dashboard/LayoutShell'
 
 const geist = Geist({ subsets: ['latin'] })
 
@@ -15,15 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className="h-full" suppressHydrationWarning>
       <body className={`${geist.className} h-full`} suppressHydrationWarning>
-        <div className="flex h-full">
-          <Sidebar />
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <TopBar />
-            <main className="flex-1 overflow-y-auto bg-[#f4f6f9] p-6">
-              {children}
-            </main>
-          </div>
-        </div>
+        <LayoutShell>{children}</LayoutShell>
       </body>
     </html>
   )
