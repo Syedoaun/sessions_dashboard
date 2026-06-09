@@ -7,7 +7,7 @@ import SessionMapWrapper from '@/components/map/SessionMapWrapper'
 import { CompactTrendChart } from '@/components/charts/TrendChart'
 import type { TrendPoint } from '@/components/charts/TrendChart'
 
-export const revalidate = 0
+export const revalidate = 60
 
 const CARD_COLORS = [
   { bg: 'bg-blue-500',    text: 'text-white', bar: 'bg-blue-400'    },
@@ -29,49 +29,44 @@ export default async function DashboardPage() {
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
   const sixMonthsAgoStr = sixMonthsAgo.toISOString().slice(0, 10)
 
-  const [sessionsRes, attendanceRes, feedbackRes, recentFeedbackRes, mapSessionsRes, citiesRes, trendSessionsRes, allFeedbackRes] = await Promise.all([
+  const [allSessionsRes, attendanceRes, feedbackRes, recentFeedbackRes, allFeedbackRes] = await Promise.all([
     supabase
       .from('sessions')
-      .select(`*, trainers:session_trainers(trainer:trainers(name)), bootcamp:bootcamps(name), attendance_count:attendance(count), feedback_count:feedback(count)`)
-      .order('date', { ascending: false })
-      .limit(8),
+      .select('id, date, school, city, topic, location, topic_summary, bootcamp_id, latitude, longitude, created_at, bootcamp:bootcamps(id, name, description, created_at), trainers:session_trainers(trainer:trainers(id, name, credentials, bio, photo_url, created_at)), attendance_count:attendance(count), feedback_count:feedback(count)')
+      .order('date', { ascending: false }),
     supabase.from('attendance').select('id', { count: 'exact', head: true }),
     supabase.from('feedback').select('id', { count: 'exact', head: true }),
     supabase.from('feedback').select('student_name, class, trainer_rating, favourite_part').order('created_at', { ascending: false }).limit(5),
-    supabase
-      .from('sessions')
-      .select('id, topic, school, city, date, latitude, longitude, bootcamp:bootcamps(name), trainers:session_trainers(trainer:trainers(name)), attendance_count:attendance(count), feedback_count:feedback(count)')
-      .not('latitude', 'is', null),
-    supabase.from('sessions').select('city').not('city', 'is', null).not('city', 'eq', ''),
-    supabase.from('sessions').select('date, attendance_count:attendance(count)').gte('date', sixMonthsAgoStr).order('date', { ascending: true }),
     supabase.from('feedback').select('trainer_rating, understanding_level, would_attend_more'),
   ])
 
-  const sessions = (sessionsRes.data ?? []).map((s: any) => ({
+  const rawSessions = (allSessionsRes.data ?? []) as any[]
+
+  // Top 8 for display — trainers as name strings
+  const sessions = rawSessions.slice(0, 8).map((s: any) => ({
     ...s,
     trainers: s.trainers?.map((t: any) => t.trainer?.name).filter(Boolean) ?? [],
     attendance_count: s.attendance_count?.[0]?.count ?? 0,
     feedback_count: s.feedback_count?.[0]?.count ?? 0,
   }))
 
-  const mapSessions: Session[] = (mapSessionsRes.data ?? []).map((s: any) => ({
-    ...s,
-    trainers: s.trainers?.map((t: any) => t.trainer).filter(Boolean) ?? [],
-    bootcamp: s.bootcamp ?? null,
-    attendance_count: s.attendance_count?.[0]?.count ?? 0,
-    feedback_count: s.feedback_count?.[0]?.count ?? 0,
-    location: null,
-    topic_summary: null,
-    bootcamp_id: null,
-    created_at: '',
-  }))
+  // Map — only sessions with coordinates, trainers as Trainer objects
+  const mapSessions: Session[] = rawSessions
+    .filter((s: any) => s.latitude != null)
+    .map((s: any) => ({
+      ...s,
+      trainers: s.trainers?.map((t: any) => t.trainer).filter(Boolean) ?? [],
+      bootcamp: s.bootcamp ?? null,
+      attendance_count: s.attendance_count?.[0]?.count ?? 0,
+      feedback_count: s.feedback_count?.[0]?.count ?? 0,
+    }))
 
   const totalStudents = attendanceRes.count ?? 0
   const totalFeedback = feedbackRes.count ?? 0
   const recentFeedback = recentFeedbackRes.data ?? []
-  const citiesCount = new Set((citiesRes.data ?? []).map((r: any) => r.city)).size
+  const citiesCount = new Set(rawSessions.map((s: any) => s.city).filter(Boolean)).size
 
-  // Compact trend: last 6 months
+  // Compact trend: last 6 months, derived from rawSessions
   const trendMonths: string[] = []
   const nowD = new Date()
   for (let i = 5; i >= 0; i--) {
@@ -80,7 +75,8 @@ export default async function DashboardPage() {
   }
   const trendByMonth: Record<string, { sessions: number; students: number }> = {}
   for (const m of trendMonths) trendByMonth[m] = { sessions: 0, students: 0 }
-  for (const s of (trendSessionsRes.data ?? []) as any[]) {
+  for (const s of rawSessions) {
+    if (s.date < sixMonthsAgoStr) continue
     const m = (s.date as string).slice(0, 7)
     if (trendByMonth[m]) {
       trendByMonth[m].sessions++
@@ -137,7 +133,7 @@ export default async function DashboardPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total Sessions',   value: sessions.length, icon: CalendarDays, color: 'text-blue-600',   bg: 'bg-blue-50'   },
+          { label: 'Total Sessions',   value: rawSessions.length, icon: CalendarDays, color: 'text-blue-600',   bg: 'bg-blue-50'   },
           { label: 'Students Reached', value: totalStudents,   icon: Users,        color: 'text-orange-500', bg: 'bg-orange-50' },
           { label: 'Feedback Forms',   value: totalFeedback,   icon: MessageSquare,color: 'text-purple-600', bg: 'bg-purple-50' },
           { label: 'Cities Covered',   value: citiesCount,     icon: MapPin,       color: 'text-emerald-600',bg: 'bg-emerald-50'},

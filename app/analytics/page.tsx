@@ -9,7 +9,7 @@ import type { TrainerStat } from '@/components/charts/TrainerLeaderboard'
 import type { BarItem } from '@/components/charts/HorizontalBarChart'
 import type { TrendPoint } from '@/components/charts/TrendChart'
 
-export const revalidate = 0
+export const revalidate = 60
 
 function Section({ title, subtitle, children }: {
   title: string
