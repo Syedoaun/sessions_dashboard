@@ -42,3 +42,29 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ uploaded: data?.length ?? 0, failed, media: data })
 }
+
+export async function DELETE(req: NextRequest) {
+  const id = new URL(req.url).searchParams.get('id')
+  if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
+
+  const { data: row, error: fetchError } = await supabase
+    .from('media')
+    .select('file_url')
+    .eq('id', id)
+    .single()
+
+  if (fetchError || !row) return NextResponse.json({ error: 'Media not found' }, { status: 404 })
+
+  // Derive the storage path from the public URL (…/session-media/<path>)
+  const marker = '/session-media/'
+  const idx = row.file_url.indexOf(marker)
+  if (idx !== -1) {
+    const path = decodeURIComponent(row.file_url.slice(idx + marker.length))
+    await supabase.storage.from('session-media').remove([path])
+  }
+
+  const { error } = await supabase.from('media').delete().eq('id', id)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  return NextResponse.json({ ok: true })
+}

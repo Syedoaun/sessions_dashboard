@@ -60,6 +60,10 @@ export default function SessionDetailPage() {
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [deleteLoading, setDeleteLoading] = useState(false)
 
+  // Media delete (per-tile confirm)
+  const [mediaConfirm, setMediaConfirm] = useState<string | null>(null)
+  const [mediaDeleting, setMediaDeleting] = useState<string | null>(null)
+
   const load = useCallback(() => {
     fetch(`/api/sessions/${id}`)
       .then((r) => r.json())
@@ -127,6 +131,16 @@ export default function SessionDetailPage() {
     const res = await fetch(`/api/sessions/${id}`, { method: 'DELETE' })
     if (res.ok) router.push('/sessions')
     else { setDeleteLoading(false); setDeleteConfirm(false) }
+  }
+
+  async function handleDeleteMedia(mediaId: string) {
+    setMediaDeleting(mediaId)
+    const res = await fetch(`/api/media?id=${mediaId}`, { method: 'DELETE' })
+    if (res.ok) {
+      setMedia((prev) => prev.filter((m) => m.id !== mediaId))
+      setMediaConfirm(null)
+    }
+    setMediaDeleting(null)
   }
 
   function toggleEditTrainer(tid: string) {
@@ -530,13 +544,23 @@ export default function SessionDetailPage() {
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                 {images.map((m) => (
                   <div key={m.id} className="space-y-1">
-                    <a href={m.file_url} target="_blank" rel="noreferrer">
-                      <img
-                        src={m.file_url}
-                        alt={m.file_name}
-                        className="rounded-lg aspect-square object-cover w-full hover:opacity-90 transition-opacity border"
+                    <div className="relative group">
+                      <a href={m.file_url} target="_blank" rel="noreferrer">
+                        <img
+                          src={m.file_url}
+                          alt={m.file_name}
+                          className="rounded-lg aspect-square object-cover w-full hover:opacity-90 transition-opacity border"
+                        />
+                      </a>
+                      <MediaDeleteControl
+                        id={m.id}
+                        confirm={mediaConfirm === m.id}
+                        deleting={mediaDeleting === m.id}
+                        onAsk={() => setMediaConfirm(m.id)}
+                        onCancel={() => setMediaConfirm(null)}
+                        onConfirm={() => handleDeleteMedia(m.id)}
                       />
-                    </a>
+                    </div>
                     {m.uploaded_by && <p className="text-xs text-gray-400 truncate">{m.uploaded_by}</p>}
                   </div>
                 ))}
@@ -552,7 +576,17 @@ export default function SessionDetailPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {videos.map((m) => (
                   <div key={m.id} className="space-y-1">
-                    <video src={m.file_url} controls className="rounded-lg w-full border" />
+                    <div className="relative group">
+                      <video src={m.file_url} controls className="rounded-lg w-full border" />
+                      <MediaDeleteControl
+                        id={m.id}
+                        confirm={mediaConfirm === m.id}
+                        deleting={mediaDeleting === m.id}
+                        onAsk={() => setMediaConfirm(m.id)}
+                        onCancel={() => setMediaConfirm(null)}
+                        onConfirm={() => handleDeleteMedia(m.id)}
+                      />
+                    </div>
                     {m.uploaded_by && <p className="text-xs text-gray-400">{m.uploaded_by}</p>}
                   </div>
                 ))}
@@ -571,5 +605,51 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <label className="text-sm font-medium text-gray-700">{label}</label>
       {children}
     </div>
+  )
+}
+
+function MediaDeleteControl({
+  confirm, deleting, onAsk, onCancel, onConfirm,
+}: {
+  id: string
+  confirm: boolean
+  deleting: boolean
+  onAsk: () => void
+  onCancel: () => void
+  onConfirm: () => void
+}) {
+  if (confirm) {
+    return (
+      <div className="absolute inset-0 rounded-lg bg-black/60 flex flex-col items-center justify-center gap-2 text-white">
+        <span className="text-xs font-medium">Delete this file?</span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            disabled={deleting}
+            onClick={onConfirm}
+            className="px-3 py-1 rounded-md bg-red-600 hover:bg-red-700 text-xs font-medium disabled:opacity-60"
+          >
+            {deleting ? '…' : 'Delete'}
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-3 py-1 rounded-md bg-white/20 hover:bg-white/30 text-xs font-medium"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    )
+  }
+  return (
+    <button
+      type="button"
+      onClick={onAsk}
+      title="Delete file"
+      className="absolute top-1.5 right-1.5 p-1.5 rounded-md bg-black/50 text-white opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-opacity"
+    >
+      <Trash2 className="w-3.5 h-3.5" />
+    </button>
   )
 }
