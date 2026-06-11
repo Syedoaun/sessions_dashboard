@@ -1,4 +1,5 @@
 import { supabaseAdmin as supabase } from '@/lib/supabase/admin'
+import { fetchAll } from '@/lib/supabase/fetch-all'
 import { BarChart2, Users, TrendingUp, MessageSquare, Star } from 'lucide-react'
 import { FeedbackCharts } from '@/components/charts/FeedbackCharts'
 import { TrendChart } from '@/components/charts/TrendChart'
@@ -28,22 +29,24 @@ function Section({ title, subtitle, children }: {
 }
 
 export default async function AnalyticsPage() {
-  const [sessionsRes, feedbackRes, attendanceRes, trainersRes, bootcampsRes] = await Promise.all([
-    supabase
-      .from('sessions')
-      .select('id, date, school, city, bootcamp_id, attendance_count:attendance(count), trainers:session_trainers(trainer_id)')
-      .order('date', { ascending: true }),
-    supabase.from('feedback').select('trainer_rating, understanding_level, would_attend_more, learned_something'),
-    supabase.from('attendance').select('class'),
-    supabase.from('trainers').select('id, name, credentials'),
+  const [sessions, feedback, attendance, trainers, bootcampsRes] = await Promise.all([
+    fetchAll<any>((from, to) =>
+      supabase
+        .from('sessions')
+        .select('id, date, school, city, bootcamp_id, attendance_count:attendance(count), trainers:session_trainers(trainer_id)')
+        .is('deleted_at', null)
+        .order('date', { ascending: true })
+        .range(from, to)),
+    fetchAll<any>((from, to) =>
+      supabase.from('feedback').select('trainer_rating, understanding_level, would_attend_more, learned_something, sessions!inner(deleted_at)').is('sessions.deleted_at', null).range(from, to)),
+    fetchAll<any>((from, to) =>
+      supabase.from('attendance').select('class, sessions!inner(deleted_at)').is('sessions.deleted_at', null).range(from, to)),
+    fetchAll<any>((from, to) =>
+      supabase.from('trainers').select('id, name, credentials').is('deleted_at', null).range(from, to)),
     supabase.from('bootcamps').select('id, name'),
   ])
 
-  const sessions   = (sessionsRes.data  ?? []) as any[]
-  const feedback   = (feedbackRes.data  ?? []) as any[]
-  const attendance = (attendanceRes.data ?? []) as any[]
-  const trainers   = (trainersRes.data  ?? []) as any[]
-  const bootcamps  = (bootcampsRes.data ?? []) as any[]
+  const bootcamps = (bootcampsRes.data ?? []) as any[]
 
   // ── KPIs ──────────────────────────────────────────────────────────────────
   const totalStudents   = attendance.length

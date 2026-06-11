@@ -12,11 +12,13 @@ import { formatDate } from '@/lib/utils'
 import { UploadAttendance } from '@/components/sessions/UploadAttendance'
 import { UploadFeedback } from '@/components/sessions/UploadFeedback'
 import { UploadMedia } from '@/components/sessions/UploadMedia'
+import { TrainerMultiSelect } from '@/components/sessions/TrainerMultiSelect'
+import { PAKISTAN_CITIES } from '@/lib/cities'
 import { FeedbackCharts } from '@/components/charts/FeedbackCharts'
 import type { Session, Attendance, Feedback, Media, FeedbackStats, Trainer, Bootcamp } from '@/types'
 import {
   Users, MapPin, BookOpen, Image as ImageIcon, Video,
-  UserCheck, Layers, Building2, ChevronLeft, Pencil,
+  Layers, Building2, ChevronLeft, Pencil,
   Trash2, X, Check,
 } from 'lucide-react'
 
@@ -24,14 +26,6 @@ const LocationPicker = dynamic(() => import('@/components/map/LocationPicker'), 
   ssr: false,
   loading: () => <div className="h-56 rounded-xl border bg-gray-100 animate-pulse" />,
 })
-
-const PAKISTAN_CITIES = [
-  'Islamabad', 'Rawalpindi', 'Lahore', 'Karachi', 'Peshawar', 'Quetta',
-  'Multan', 'Faisalabad', 'Hyderabad', 'Gujranwala', 'Sialkot', 'Bahawalpur',
-  'Sargodha', 'Sukkur', 'Larkana', 'Abbottabad', 'Mardan', 'Dera Ghazi Khan',
-  'Sheikhupura', 'Muzaffarabad', 'Gilgit', 'Chitral', 'Swat', 'Mansehra',
-  'Kohat', 'Bannu', 'Dera Ismail Khan', 'Mirpur', 'Khuzdar', 'Turbat',
-]
 
 export default function SessionDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -44,7 +38,6 @@ export default function SessionDetailPage() {
   const [media, setMedia] = useState<Media[]>([])
   const [trainers, setTrainers] = useState<Trainer[]>([])
   const [bootcamps, setBootcamps] = useState<Bootcamp[]>([])
-  const [uploadedBy, setUploadedBy] = useState('')
 
   // Edit
   const [editMode, setEditMode] = useState(false)
@@ -245,8 +238,9 @@ export default function SessionDetailPage() {
               </select>
             </Field>
 
-            <Field label="Venue / Location">
+            <Field label="Location">
               <Input
+                placeholder="e.g. Sector I-8, Committee Chowk, Surjani Town, D-12"
                 value={editForm.location}
                 onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
               />
@@ -271,30 +265,7 @@ export default function SessionDetailPage() {
 
           {trainers.length > 0 && (
             <Field label="Trainer(s)">
-              <select
-                value=""
-                onChange={(e) => { if (e.target.value) toggleEditTrainer(e.target.value) }}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-              >
-                <option value="">Add trainer…</option>
-                {trainers.filter((t) => !editTrainers.includes(t.id)).map((t) => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
-                ))}
-              </select>
-              {editTrainers.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {editTrainers.map((id) => {
-                    const t = trainers.find((x) => x.id === id)
-                    if (!t) return null
-                    return (
-                      <span key={id} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm bg-blue-600 text-white">
-                        {t.name}
-                        <button type="button" onClick={() => toggleEditTrainer(id)} className="hover:text-blue-200 leading-none">×</button>
-                      </span>
-                    )
-                  })}
-                </div>
-              )}
+              <TrainerMultiSelect trainers={trainers} selected={editTrainers} onToggle={toggleEditTrainer} />
             </Field>
           )}
 
@@ -412,38 +383,6 @@ export default function SessionDetailPage() {
         </div>
       )}
 
-      {/* Uploader selector */}
-      {trainers.length > 0 ? (
-        <div className="bg-white rounded-xl border p-4 flex items-center gap-3">
-          <span className="flex items-center gap-1.5 text-sm font-medium text-gray-700 shrink-0">
-            <UserCheck className="w-4 h-4 text-gray-500" />
-            Uploading as:
-          </span>
-          <select
-            value={uploadedBy}
-            onChange={(e) => setUploadedBy(e.target.value)}
-            className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-          >
-            <option value="">Select trainer…</option>
-            {trainers.map((t) => (
-              <option key={t.id} value={t.name}>{t.name}</option>
-            ))}
-          </select>
-          {!uploadedBy && (
-            <span className="text-xs text-amber-600 font-medium shrink-0">Required before uploading</span>
-          )}
-        </div>
-      ) : (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-700 flex items-center gap-2">
-          <UserCheck className="w-4 h-4 shrink-0" />
-          No trainers found.{' '}
-          <Link href="/trainers/new" className="font-medium underline hover:text-amber-900">
-            Add a trainer
-          </Link>{' '}
-          to track who uploads data.
-        </div>
-      )}
-
       {/* Tabs */}
       <Tabs defaultValue="attendance">
         <TabsList>
@@ -454,7 +393,7 @@ export default function SessionDetailPage() {
 
         {/* Attendance Tab */}
         <TabsContent value="attendance" className="space-y-4 mt-4">
-          <UploadAttendance sessionId={id} onDone={load} uploadedBy={uploadedBy} />
+          <UploadAttendance sessionId={id} onDone={load} />
 
           {Object.keys(classCounts).length > 0 && (
             <div className="bg-white rounded-xl border p-5 space-y-3">
@@ -507,7 +446,7 @@ export default function SessionDetailPage() {
 
         {/* Feedback Tab */}
         <TabsContent value="feedback" className="space-y-4 mt-4">
-          <UploadFeedback sessionId={id} onDone={load} uploadedBy={uploadedBy} />
+          <UploadFeedback sessionId={id} onDone={load} />
 
           {feedbackStats.total > 0 && (
             <>
@@ -534,7 +473,7 @@ export default function SessionDetailPage() {
 
         {/* Media Tab */}
         <TabsContent value="media" className="space-y-4 mt-4">
-          <UploadMedia sessionId={id} onDone={load} uploadedBy={uploadedBy} />
+          <UploadMedia sessionId={id} onDone={load} />
 
           {images.length > 0 && (
             <div className="space-y-2">

@@ -1,8 +1,11 @@
 import { supabase } from '@/lib/supabase/client'
+import { fetchAll } from '@/lib/supabase/fetch-all'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Plus, Users, MessageSquare, CalendarDays, ChevronRight, X } from 'lucide-react'
+import { Plus, Users, MessageSquare, CalendarDays, ChevronRight } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
+import { SessionsFilters } from '@/components/sessions/SessionsFilters'
+import { PAKISTAN_CITIES } from '@/lib/cities'
 
 export const revalidate = 0
 
@@ -19,21 +22,31 @@ function colorFor(str: string) {
 export default async function SessionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>
+  searchParams: Promise<{ q?: string; sort?: string; bootcamp?: string; city?: string }>
 }) {
-  const { q } = await searchParams
-  const search = q?.trim() ?? ''
+  const sp = await searchParams
+  const search = sp.q?.trim() ?? ''
+  const sort = sp.sort ?? 'date_desc'
+  const bootcampId = sp.bootcamp ?? ''
+  const cityFilter = sp.city ?? ''
 
-  let query = supabase
-    .from('sessions')
-    .select(`*, trainers:session_trainers(trainer:trainers(name)), bootcamp:bootcamps(name), attendance_count:attendance(count), feedback_count:feedback(count)`)
-    .order('date', { ascending: false })
-
-  if (search) {
-    query = query.or(`topic.ilike.%${search}%,school.ilike.%${search}%,city.ilike.%${search}%`)
-  }
-
-  const { data: sessions } = await query
+  const [sessions, bootcampsRes] = await Promise.all([
+    fetchAll<any>((from, to) => {
+      let query = supabase
+        .from('sessions')
+        .select(`*, trainers:session_trainers(trainer:trainers(name)), bootcamp:bootcamps(name), attendance_count:attendance(count), feedback_count:feedback(count)`)
+        .is('deleted_at', null)
+        .order('date', { ascending: false })
+        .range(from, to)
+      if (search) {
+        query = query.or(`topic.ilike.%${search}%,school.ilike.%${search}%,city.ilike.%${search}%`)
+      }
+      if (bootcampId) query = query.eq('bootcamp_id', bootcampId)
+      if (cityFilter) query = query.eq('city', cityFilter)
+      return query
+    }),
+    supabase.from('bootcamps').select('id, name').is('deleted_at', null).order('name'),
+  ])
 
   const list = (sessions ?? []).map((s: any) => ({
     ...s,
@@ -43,6 +56,22 @@ export default async function SessionsPage({
     feedback_count:   s.feedback_count?.[0]?.count ?? 0,
   }))
 
+  // Sort in JS so we can also order by the aggregated student count
+  list.sort((a, b) => {
+    switch (sort) {
+      case 'date_asc':      return a.date.localeCompare(b.date)
+      case 'name_asc':      return a.topic.localeCompare(b.topic)
+      case 'name_desc':     return b.topic.localeCompare(a.topic)
+      case 'students_desc': return b.attendance_count - a.attendance_count
+      case 'students_asc':  return a.attendance_count - b.attendance_count
+      case 'date_desc':
+      default:              return b.date.localeCompare(a.date)
+    }
+  })
+
+  const bootcamps = bootcampsRes.data ?? []
+  const hasFilters = !!(search || bootcampId || cityFilter) || sort !== 'date_desc'
+
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -50,7 +79,7 @@ export default async function SessionsPage({
         <div className="min-w-0">
           <h2 className="text-xl font-bold text-gray-800">All Sessions</h2>
           <p className="text-sm text-gray-400 mt-0.5">
-            {search ? `${list.length} result${list.length !== 1 ? 's' : ''} for "${search}"` : `${list.length} sessions total`}
+            {hasFilters ? `${list.length} result${list.length !== 1 ? 's' : ''}` : `${list.length} sessions total`}
           </p>
         </div>
         <Link href="/sessions/new" className="shrink-0">
@@ -60,21 +89,21 @@ export default async function SessionsPage({
         </Link>
       </div>
 
-      {/* Active search banner */}
-      {search && (
-        <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-2.5 text-sm text-blue-700">
-          <span>Showing results for <strong>"{search}"</strong></span>
-          <Link href="/sessions" className="ml-auto flex items-center gap-1 text-blue-500 hover:text-blue-700">
-            <X className="w-3.5 h-3.5" /> Clear
-          </Link>
-        </div>
-      )}
+      {/* Filters */}
+      <SessionsFilters
+        q={search}
+        sort={sort}
+        bootcamp={bootcampId}
+        city={cityFilter}
+        bootcamps={bootcamps}
+        cities={PAKISTAN_CITIES}
+      />
 
       {/* List */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         {list.length === 0 && (
           <p className="p-10 text-center text-sm text-gray-400">
-            {search ? `No sessions match "${search}".` : 'No sessions yet.'}
+            {hasFilters ? 'No sessions match these filters.' : 'No sessions yet.'}
           </p>
         )}
         <div className="divide-y divide-gray-50">

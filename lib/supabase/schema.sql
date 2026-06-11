@@ -64,6 +64,18 @@ create table media (
   uploaded_at timestamptz default now()
 );
 
+-- Soft-delete / Trash (30-day retention). A non-null deleted_at means the row
+-- is in the Trash: hidden from the app but recoverable until purged after 30 days.
+alter table sessions  add column if not exists deleted_at timestamptz;
+alter table trainers  add column if not exists deleted_at timestamptz;
+alter table bootcamps add column if not exists deleted_at timestamptz;
+alter table media     add column if not exists deleted_at timestamptz;
+
+create index if not exists idx_sessions_deleted_at  on sessions(deleted_at);
+create index if not exists idx_trainers_deleted_at  on trainers(deleted_at);
+create index if not exists idx_bootcamps_deleted_at on bootcamps(deleted_at);
+create index if not exists idx_media_deleted_at     on media(deleted_at);
+
 -- Indexes for common queries
 create index idx_attendance_session on attendance(session_id);
 create index idx_attendance_class on attendance(class);

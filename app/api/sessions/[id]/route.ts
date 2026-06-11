@@ -28,7 +28,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const { error } = await supabase.from('sessions').delete().eq('id', id)
+  // Soft delete — moves the session to Trash (recoverable for 30 days)
+  const { error } = await supabase
+    .from('sessions')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
 }
@@ -44,7 +48,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       .single(),
     supabase.from('attendance').select('*').eq('session_id', id).order('class'),
     supabase.from('feedback').select('*').eq('session_id', id),
-    supabase.from('media').select('*').eq('session_id', id).order('uploaded_at', { ascending: false }),
+    supabase.from('media').select('*').eq('session_id', id).is('deleted_at', null).order('uploaded_at', { ascending: false }),
   ])
 
   if (sessionRes.error) return NextResponse.json({ error: sessionRes.error.message }, { status: 404 })

@@ -6,19 +6,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import type { Trainer, Bootcamp } from '@/types'
+import { TrainerMultiSelect } from '@/components/sessions/TrainerMultiSelect'
+import { PAKISTAN_CITIES } from '@/lib/cities'
 
 const LocationPicker = dynamic(() => import('@/components/map/LocationPicker'), {
   ssr: false,
   loading: () => <div className="h-60 rounded-xl border bg-gray-100 animate-pulse" />,
 })
-
-const PAKISTAN_CITIES = [
-  'Islamabad', 'Rawalpindi', 'Lahore', 'Karachi', 'Peshawar', 'Quetta',
-  'Multan', 'Faisalabad', 'Hyderabad', 'Gujranwala', 'Sialkot', 'Bahawalpur',
-  'Sargodha', 'Sukkur', 'Larkana', 'Abbottabad', 'Mardan', 'Dera Ghazi Khan',
-  'Sheikhupura', 'Muzaffarabad', 'Gilgit', 'Chitral', 'Swat', 'Mansehra',
-  'Kohat', 'Bannu', 'Dera Ismail Khan', 'Mirpur', 'Khuzdar', 'Turbat',
-]
 
 export default function NewSessionPage() {
   const router = useRouter()
@@ -140,9 +134,9 @@ export default function NewSessionPage() {
           </select>
         </Field>
 
-        <Field label="Venue / Location">
+        <Field label="Location">
           <Input
-            placeholder="e.g. Auditorium, Room 3"
+            placeholder="e.g. Sector I-8, Committee Chowk, Surjani Town, D-12"
             value={form.location}
             onChange={(e) => setForm({ ...form, location: e.target.value })}
           />
@@ -169,30 +163,7 @@ export default function NewSessionPage() {
         {/* Trainers */}
         {trainers.length > 0 && (
           <Field label="Trainer(s)">
-            <select
-              value=""
-              onChange={(e) => { if (e.target.value) toggle(e.target.value) }}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-            >
-              <option value="">Add trainer…</option>
-              {trainers.filter((t) => !selectedTrainers.includes(t.id)).map((t) => (
-                <option key={t.id} value={t.id}>{t.name}</option>
-              ))}
-            </select>
-            {selectedTrainers.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                {selectedTrainers.map((id) => {
-                  const t = trainers.find((x) => x.id === id)
-                  if (!t) return null
-                  return (
-                    <span key={id} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm bg-blue-600 text-white">
-                      {t.name}
-                      <button type="button" onClick={() => toggle(id)} className="hover:text-blue-200 leading-none">×</button>
-                    </span>
-                  )
-                })}
-              </div>
-            )}
+            <TrainerMultiSelect trainers={trainers} selected={selectedTrainers} onToggle={toggle} />
           </Field>
         )}
 

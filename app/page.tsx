@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/client'
+import { fetchAll } from '@/lib/supabase/fetch-all'
 import Link from 'next/link'
 import { CalendarDays, Users, MessageSquare, ArrowRight, ChevronRight, MapPin, BarChart2 } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
@@ -29,18 +30,21 @@ export default async function DashboardPage() {
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
   const sixMonthsAgoStr = sixMonthsAgo.toISOString().slice(0, 10)
 
-  const [allSessionsRes, attendanceRes, feedbackRes, recentFeedbackRes, allFeedbackRes] = await Promise.all([
-    supabase
-      .from('sessions')
-      .select('id, date, school, city, topic, location, topic_summary, bootcamp_id, latitude, longitude, created_at, bootcamp:bootcamps(id, name, description, created_at), trainers:session_trainers(trainer:trainers(id, name, credentials, bio, photo_url, created_at)), attendance_count:attendance(count), feedback_count:feedback(count)')
-      .order('date', { ascending: false }),
-    supabase.from('attendance').select('id', { count: 'exact', head: true }),
-    supabase.from('feedback').select('id', { count: 'exact', head: true }),
-    supabase.from('feedback').select('student_name, class, trainer_rating, favourite_part').order('created_at', { ascending: false }).limit(5),
-    supabase.from('feedback').select('trainer_rating, understanding_level, would_attend_more'),
+  const [rawSessions, attendanceRes, feedbackRes, recentFeedbackRes, allFeedback] = await Promise.all([
+    fetchAll<any>((from, to) =>
+      supabase
+        .from('sessions')
+        .select('id, date, school, city, topic, location, topic_summary, bootcamp_id, latitude, longitude, created_at, bootcamp:bootcamps(id, name, description, created_at), trainers:session_trainers(trainer:trainers(id, name, credentials, bio, photo_url, created_at)), attendance_count:attendance(count), feedback_count:feedback(count)')
+        .is('deleted_at', null)
+        .order('date', { ascending: false })
+        .range(from, to)),
+    // Counts/lists below exclude rows belonging to trashed sessions via an inner join
+    supabase.from('attendance').select('id, sessions!inner(deleted_at)', { count: 'exact', head: true }).is('sessions.deleted_at', null),
+    supabase.from('feedback').select('id, sessions!inner(deleted_at)', { count: 'exact', head: true }).is('sessions.deleted_at', null),
+    supabase.from('feedback').select('student_name, class, trainer_rating, favourite_part, sessions!inner(deleted_at)').is('sessions.deleted_at', null).order('created_at', { ascending: false }).limit(5),
+    fetchAll<any>((from, to) =>
+      supabase.from('feedback').select('trainer_rating, understanding_level, would_attend_more, sessions!inner(deleted_at)').is('sessions.deleted_at', null).range(from, to)),
   ])
-
-  const rawSessions = (allSessionsRes.data ?? []) as any[]
 
   // Top 8 for display — trainers as name strings
   const sessions = rawSessions.slice(0, 8).map((s: any) => ({
@@ -90,7 +94,6 @@ export default async function DashboardPage() {
   }))
 
   // Feedback health micro-stats
-  const allFeedback = (allFeedbackRes.data ?? []) as any[]
   const fbTotal = allFeedback.length
   const excellentPct   = fbTotal > 0 ? Math.round((allFeedback.filter((f: any) => f.trainer_rating === 'excellent').length / fbTotal) * 100) : null
   const understoodPct  = fbTotal > 0 ? Math.round(((allFeedback.filter((f: any) => f.understanding_level === 'understand_basics').length + allFeedback.filter((f: any) => f.understanding_level === 'need_more_practice').length) / fbTotal) * 100) : null
@@ -187,21 +190,30 @@ export default async function DashboardPage() {
             return (
               <Link key={s.id} href={`/sessions/${s.id}`}
                 className="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow space-y-3">
-                <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${c.bg} ${c.text}`}>
-                  {s.school}
-                </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${c.bg} ${c.text}`}>
+                    {s.school}
+                  </span>
+                  {s.bootcamp?.name && (
+                    <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 text-indigo-600">
+                      {s.bootcamp.name}
+                    </span>
+                  )}
+                </div>
                 <div>
                   <p className="font-semibold text-gray-800 text-sm leading-snug line-clamp-2">{s.topic}</p>
-                  <p className="text-xs text-gray-400 mt-1">{formatDate(s.date)}</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {formatDate(s.date)}{s.city ? ` · ${s.city}` : ''}
+                  </p>
                 </div>
-                <div className="flex items-end justify-between">
-                  <div>
-                    <p className="text-[10px] text-gray-400">Trainer</p>
-                    <p className="text-xs font-medium text-gray-600 truncate max-w-[80px]">
-                      {s.trainers[0] ?? '—'}
+                <div className="flex items-end justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-[10px] text-gray-400">Trainer{s.trainers.length > 1 ? 's' : ''}</p>
+                    <p className="text-xs font-medium text-gray-600">
+                      {s.trainers.length ? s.trainers.join(', ') : '—'}
                     </p>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right shrink-0">
                     <p className="text-sm font-bold text-gray-700">{s.attendance_count}</p>
                     <div className="w-16 h-1.5 bg-gray-100 rounded-full mt-1">
                       <div className={`h-1.5 rounded-full ${c.bg}`} style={{ width: `${pct}%` }} />

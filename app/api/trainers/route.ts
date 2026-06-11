@@ -4,12 +4,14 @@ import { supabaseAdmin as supabase } from '@/lib/supabase/admin'
 export async function GET() {
   const { data, error } = await supabase
     .from('trainers')
-    .select('*, sessions:session_trainers(session_id)')
+    .select('*, sessions:session_trainers(session:sessions(deleted_at))')
+    .is('deleted_at', null)
     .order('name')
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   const trainers = (data ?? []).map((t: any) => ({
     ...t,
-    session_count: (t.sessions ?? []).length,
+    // Count only sessions that aren't in the Trash
+    session_count: (t.sessions ?? []).filter((l: any) => l.session && l.session.deleted_at === null).length,
     sessions: undefined,
   }))
   return NextResponse.json(trainers)

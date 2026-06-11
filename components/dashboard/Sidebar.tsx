@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, CalendarDays, Users, Plus, Layers, BarChart2, X } from 'lucide-react'
+import { LayoutDashboard, CalendarDays, Users, Plus, Layers, BarChart2, Trash2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export function Sidebar({ onClose }: { onClose?: () => void }) {
@@ -49,6 +49,8 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
             active={pathname.startsWith('/bootcamps')} onClick={onClose} />
           <NavItem href="/trainers" icon={Users} label="Trainers"
             active={pathname.startsWith('/trainers')} onClick={onClose} />
+          <NavItem href="/trash" icon={Trash2} label="Trash"
+            active={pathname.startsWith('/trash')} onClick={onClose} />
         </Section>
       </nav>
     </aside>
