@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin as supabase } from '@/lib/supabase/admin'
 import { extractFeedback } from '@/lib/extract'
+import { requireAdmin } from '@/lib/auth'
 
 export async function POST(req: NextRequest) {
+  const denied = await requireAdmin(); if (denied) return denied
   const formData = await req.formData()
   const files = formData.getAll('files') as File[]
   const sessionId = formData.get('session_id') as string

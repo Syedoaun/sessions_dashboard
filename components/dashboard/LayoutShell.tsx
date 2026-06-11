@@ -2,11 +2,21 @@
 import { useState } from 'react'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
+import { AuthProvider } from '@/components/auth/AuthContext'
 
-export function LayoutShell({ children }: { children: React.ReactNode }) {
+export function LayoutShell({
+  children,
+  isAdmin,
+  email,
+}: {
+  children: React.ReactNode
+  isAdmin: boolean
+  email: string | null
+}) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
+    <AuthProvider value={{ isAdmin, email }}>
     <div className="flex h-full">
       {/* Mobile backdrop */}
       {sidebarOpen && (
@@ -33,5 +43,6 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
         </main>
       </div>
     </div>
+    </AuthProvider>
   )
 }

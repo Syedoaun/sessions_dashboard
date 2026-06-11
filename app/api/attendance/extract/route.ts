@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin as supabase } from '@/lib/supabase/admin'
 import { extractAttendance } from '@/lib/extract'
+import { requireAdmin } from '@/lib/auth'
 
 export async function POST(req: NextRequest) {
+  const denied = await requireAdmin(); if (denied) return denied
   console.log('[attendance/extract] GEMINI_API_KEY set:', !!process.env.GEMINI_API_KEY)
 
   const formData = await req.formData()

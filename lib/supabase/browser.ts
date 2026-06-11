@@ -1,0 +1,11 @@
+'use client'
+import { createBrowserClient } from '@supabase/ssr'
+
+// Auth-aware Supabase client for the browser (login / logout). Shares the
+// session cookie with the server client created in `server.ts`.
+export function createSupabaseBrowserClient() {
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  )
+}

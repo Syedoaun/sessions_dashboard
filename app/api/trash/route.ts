@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin as supabase } from '@/lib/supabase/admin'
+import { requireAdmin } from '@/lib/auth'
 
 const RETENTION_DAYS = 30
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -51,6 +52,7 @@ function daysLeft(deletedAt: string): number {
 }
 
 export async function GET() {
+  const denied = await requireAdmin(); if (denied) return denied
   await purgeExpired()
 
   const [sessions, trainers, bootcamps, media] = await Promise.all([
@@ -71,6 +73,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const denied = await requireAdmin(); if (denied) return denied
   const { type, id, action } = await req.json()
 
   if (!type || !(type in TABLES) || !id || !['restore', 'purge'].includes(action)) {

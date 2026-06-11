@@ -14,6 +14,7 @@ import { UploadFeedback } from '@/components/sessions/UploadFeedback'
 import { UploadMedia } from '@/components/sessions/UploadMedia'
 import { TrainerMultiSelect } from '@/components/sessions/TrainerMultiSelect'
 import { PAKISTAN_CITIES } from '@/lib/cities'
+import { useIsAdmin } from '@/components/auth/AuthContext'
 import { FeedbackCharts } from '@/components/charts/FeedbackCharts'
 import type { Session, Attendance, Feedback, Media, FeedbackStats, Trainer, Bootcamp } from '@/types'
 import {
@@ -30,6 +31,7 @@ const LocationPicker = dynamic(() => import('@/components/map/LocationPicker'), 
 export default function SessionDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
+  const isAdmin = useIsAdmin()
 
   // Data
   const [session, setSession] = useState<Session | null>(null)
@@ -299,34 +301,38 @@ export default function SessionDetailPage() {
               <span className="text-sm bg-blue-50 text-blue-600 font-medium px-3 py-1 rounded-full">
                 {formatDate(session.date)}
               </span>
-              <Button size="sm" variant="outline" onClick={startEdit} title="Edit session">
-                <Pencil className="w-3.5 h-3.5" />
-              </Button>
-              {deleteConfirm ? (
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-red-600 font-medium">Delete session?</span>
-                  <Button
-                    size="sm"
-                    disabled={deleteLoading}
-                    className="bg-red-600 hover:bg-red-700 text-white"
-                    onClick={handleDelete}
-                  >
-                    {deleteLoading ? '…' : 'Delete'}
+              {isAdmin && (
+                <>
+                  <Button size="sm" variant="outline" onClick={startEdit} title="Edit session">
+                    <Pencil className="w-3.5 h-3.5" />
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => setDeleteConfirm(false)}>
-                    <X className="w-3 h-3" />
-                  </Button>
-                </div>
-              ) : (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  title="Delete session"
-                  className="text-red-500 hover:text-red-700 hover:border-red-300"
-                  onClick={() => setDeleteConfirm(true)}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
+                  {deleteConfirm ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs text-red-600 font-medium">Delete session?</span>
+                      <Button
+                        size="sm"
+                        disabled={deleteLoading}
+                        className="bg-red-600 hover:bg-red-700 text-white"
+                        onClick={handleDelete}
+                      >
+                        {deleteLoading ? '…' : 'Delete'}
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setDeleteConfirm(false)}>
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      title="Delete session"
+                      className="text-red-500 hover:text-red-700 hover:border-red-300"
+                      onClick={() => setDeleteConfirm(true)}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -367,8 +373,10 @@ export default function SessionDetailPage() {
                 })}
               </div>
             ) : (
-              <p className="text-sm text-gray-400 italic">No trainer assigned —{' '}
-                <button type="button" onClick={startEdit} className="text-blue-500 hover:underline not-italic">add one</button>
+              <p className="text-sm text-gray-400 italic">
+                No trainer assigned{isAdmin && (<>{' — '}
+                  <button type="button" onClick={startEdit} className="text-blue-500 hover:underline not-italic">add one</button>
+                </>)}
               </p>
             )}
           </div>
@@ -393,7 +401,7 @@ export default function SessionDetailPage() {
 
         {/* Attendance Tab */}
         <TabsContent value="attendance" className="space-y-4 mt-4">
-          <UploadAttendance sessionId={id} onDone={load} />
+          {isAdmin && <UploadAttendance sessionId={id} onDone={load} />}
 
           {Object.keys(classCounts).length > 0 && (
             <div className="bg-white rounded-xl border p-5 space-y-3">
@@ -446,7 +454,7 @@ export default function SessionDetailPage() {
 
         {/* Feedback Tab */}
         <TabsContent value="feedback" className="space-y-4 mt-4">
-          <UploadFeedback sessionId={id} onDone={load} />
+          {isAdmin && <UploadFeedback sessionId={id} onDone={load} />}
 
           {feedbackStats.total > 0 && (
             <>
@@ -473,7 +481,7 @@ export default function SessionDetailPage() {
 
         {/* Media Tab */}
         <TabsContent value="media" className="space-y-4 mt-4">
-          <UploadMedia sessionId={id} onDone={load} />
+          {isAdmin && <UploadMedia sessionId={id} onDone={load} />}
 
           {images.length > 0 && (
             <div className="space-y-2">
@@ -491,14 +499,16 @@ export default function SessionDetailPage() {
                           className="rounded-lg aspect-square object-cover w-full hover:opacity-90 transition-opacity border"
                         />
                       </a>
-                      <MediaDeleteControl
-                        id={m.id}
-                        confirm={mediaConfirm === m.id}
-                        deleting={mediaDeleting === m.id}
-                        onAsk={() => setMediaConfirm(m.id)}
-                        onCancel={() => setMediaConfirm(null)}
-                        onConfirm={() => handleDeleteMedia(m.id)}
-                      />
+                      {isAdmin && (
+                        <MediaDeleteControl
+                          id={m.id}
+                          confirm={mediaConfirm === m.id}
+                          deleting={mediaDeleting === m.id}
+                          onAsk={() => setMediaConfirm(m.id)}
+                          onCancel={() => setMediaConfirm(null)}
+                          onConfirm={() => handleDeleteMedia(m.id)}
+                        />
+                      )}
                     </div>
                     {m.uploaded_by && <p className="text-xs text-gray-400 truncate">{m.uploaded_by}</p>}
                   </div>
@@ -517,14 +527,16 @@ export default function SessionDetailPage() {
                   <div key={m.id} className="space-y-1">
                     <div className="relative group">
                       <video src={m.file_url} controls className="rounded-lg w-full border" />
-                      <MediaDeleteControl
-                        id={m.id}
-                        confirm={mediaConfirm === m.id}
-                        deleting={mediaDeleting === m.id}
-                        onAsk={() => setMediaConfirm(m.id)}
-                        onCancel={() => setMediaConfirm(null)}
-                        onConfirm={() => handleDeleteMedia(m.id)}
-                      />
+                      {isAdmin && (
+                        <MediaDeleteControl
+                          id={m.id}
+                          confirm={mediaConfirm === m.id}
+                          deleting={mediaDeleting === m.id}
+                          onAsk={() => setMediaConfirm(m.id)}
+                          onCancel={() => setMediaConfirm(null)}
+                          onConfirm={() => handleDeleteMedia(m.id)}
+                        />
+                      )}
                     </div>
                     {m.uploaded_by && <p className="text-xs text-gray-400">{m.uploaded_by}</p>}
                   </div>

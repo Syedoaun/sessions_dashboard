@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import type { Trainer } from '@/types'
 import { Plus, Pencil, Trash2, Check, X, Users } from 'lucide-react'
+import { useIsAdmin } from '@/components/auth/AuthContext'
 
 const AVATAR_COLORS = ['bg-blue-500', 'bg-orange-400', 'bg-purple-500', 'bg-emerald-500', 'bg-red-500', 'bg-cyan-500']
 function avatarColor(name: string) {
@@ -15,6 +16,7 @@ function avatarColor(name: string) {
 }
 
 export default function TrainersPage() {
+  const isAdmin = useIsAdmin()
   const [trainers, setTrainers] = useState<Trainer[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -76,11 +78,13 @@ export default function TrainersPage() {
           <h2 className="text-xl font-bold text-gray-800">Trainers</h2>
           <p className="text-sm text-gray-400 mt-0.5">{trainers.length} trainer{trainers.length !== 1 ? 's' : ''}</p>
         </div>
-        <Link href="/trainers/new">
-          <Button className="gap-2 bg-blue-600 hover:bg-blue-700">
-            <Plus className="w-4 h-4" /> Add Trainer
-          </Button>
-        </Link>
+        {isAdmin && (
+          <Link href="/trainers/new">
+            <Button className="gap-2 bg-blue-600 hover:bg-blue-700">
+              <Plus className="w-4 h-4" /> Add Trainer
+            </Button>
+          </Link>
+        )}
       </div>
 
       {loading && (
@@ -157,7 +161,7 @@ export default function TrainersPage() {
                       <p className="text-xs text-gray-400 mt-0.5">{(t as any).session_count} session{(t as any).session_count !== 1 ? 's' : ''} led</p>
                     )}
                   </div>
-                  <div className="flex gap-1.5 shrink-0">
+                  <div className={`flex gap-1.5 shrink-0 ${isAdmin ? '' : 'hidden'}`}>
                     <Button
                       size="sm"
                       variant="outline"

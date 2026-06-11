@@ -3,9 +3,11 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { LayoutDashboard, CalendarDays, Users, Plus, Layers, BarChart2, Trash2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useIsAdmin } from '@/components/auth/AuthContext'
 
 export function Sidebar({ onClose }: { onClose?: () => void }) {
   const pathname = usePathname()
+  const isAdmin = useIsAdmin()
 
   return (
     <aside className="w-60 bg-[#1a2035] flex flex-col shrink-0 h-full">
@@ -40,8 +42,10 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
         <Section label="Sessions">
           <NavItem href="/sessions" icon={CalendarDays} label="All Sessions"
             active={pathname === '/sessions' || (pathname.startsWith('/sessions/') && pathname !== '/sessions/new')} onClick={onClose} />
-          <NavItem href="/sessions/new" icon={Plus} label="New Session"
-            active={pathname === '/sessions/new'} onClick={onClose} />
+          {isAdmin && (
+            <NavItem href="/sessions/new" icon={Plus} label="New Session"
+              active={pathname === '/sessions/new'} onClick={onClose} />
+          )}
         </Section>
 
         <Section label="Setup">
@@ -49,8 +53,10 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
             active={pathname.startsWith('/bootcamps')} onClick={onClose} />
           <NavItem href="/trainers" icon={Users} label="Trainers"
             active={pathname.startsWith('/trainers')} onClick={onClose} />
-          <NavItem href="/trash" icon={Trash2} label="Trash"
-            active={pathname.startsWith('/trash')} onClick={onClose} />
+          {isAdmin && (
+            <NavItem href="/trash" icon={Trash2} label="Trash"
+              active={pathname.startsWith('/trash')} onClick={onClose} />
+          )}
         </Section>
       </nav>
     </aside>

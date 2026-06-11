@@ -1,17 +1,29 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Menu, Search, User } from 'lucide-react'
+import Link from 'next/link'
+import { Menu, Search, LogOut, LogIn, ShieldCheck, Eye } from 'lucide-react'
+import { useAuth } from '@/components/auth/AuthContext'
+import { createSupabaseBrowserClient } from '@/lib/supabase/browser'
 
 export function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
   const router = useRouter()
   const [query, setQuery] = useState('')
+  const { isAdmin, email } = useAuth()
+  const displayName = email ? email.split('@')[0] : null
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault()
     const q = query.trim()
     if (q) router.push(`/sessions?q=${encodeURIComponent(q)}`)
     else router.push('/sessions')
+  }
+
+  async function handleLogout() {
+    const supabase = createSupabaseBrowserClient()
+    await supabase.auth.signOut()
+    router.push('/')
+    router.refresh()
   }
 
   return (
@@ -39,10 +51,33 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
         />
       </form>
 
-      {/* Avatar */}
-      <div className="w-9 h-9 bg-blue-600 rounded-full flex items-center justify-center shrink-0">
-        <User className="w-4 h-4 text-white" />
-      </div>
+      {/* Role + auth */}
+      {isAdmin ? (
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="hidden sm:inline-flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">
+            <ShieldCheck className="w-3.5 h-3.5" /> {displayName ? `Admin · ${displayName}` : 'Admin'}
+          </span>
+          <button
+            onClick={handleLogout}
+            title={displayName ? `Logged in as ${displayName}` : 'Log out'}
+            className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 border rounded-md px-3 py-1.5 hover:bg-gray-50 transition-colors"
+          >
+            <LogOut className="w-4 h-4" /> <span className="hidden sm:inline">Log out</span>
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="hidden sm:inline-flex items-center gap-1 text-xs font-medium text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full">
+            <Eye className="w-3.5 h-3.5" /> Viewer
+          </span>
+          <Link
+            href="/login"
+            className="inline-flex items-center gap-1.5 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-md px-3 py-1.5 transition-colors"
+          >
+            <LogIn className="w-4 h-4" /> <span className="hidden sm:inline">Admin login</span>
+          </Link>
+        </div>
+      )}
     </header>
   )
 }

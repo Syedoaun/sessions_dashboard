@@ -5,8 +5,10 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import type { Bootcamp } from '@/types'
 import { Plus, Pencil, Trash2, Check, X, Layers } from 'lucide-react'
+import { useIsAdmin } from '@/components/auth/AuthContext'
 
 export default function BootcampsPage() {
+  const isAdmin = useIsAdmin()
   const [bootcamps, setBootcamps] = useState<Bootcamp[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -104,7 +106,7 @@ export default function BootcampsPage() {
           <h2 className="text-xl font-bold text-gray-800">Bootcamps</h2>
           <p className="text-sm text-gray-400 mt-0.5">Organising groups — select one when creating a session</p>
         </div>
-        {!showAdd && (
+        {isAdmin && !showAdd && (
           <Button onClick={() => setShowAdd(true)} className="gap-2 bg-blue-600 hover:bg-blue-700">
             <Plus className="w-4 h-4" /> Add Bootcamp
           </Button>
@@ -205,7 +207,7 @@ export default function BootcampsPage() {
                     <p className="text-sm text-gray-500 mt-0.5">{bc.description}</p>
                   )}
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className={`flex items-center gap-2 shrink-0 ${isAdmin ? '' : 'hidden'}`}>
                   <Button
                     size="sm"
                     variant="outline"

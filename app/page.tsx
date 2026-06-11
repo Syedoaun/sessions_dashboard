@@ -1,7 +1,7 @@
-import { supabase } from '@/lib/supabase/client'
+import { supabaseAdmin as supabase } from '@/lib/supabase/admin'
 import { fetchAll } from '@/lib/supabase/fetch-all'
 import Link from 'next/link'
-import { CalendarDays, Users, MessageSquare, ArrowRight, ChevronRight, MapPin, BarChart2 } from 'lucide-react'
+import { CalendarDays, Users, MessageSquare, ArrowRight, ChevronRight, MapPin, BarChart2, Layers } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import type { Session } from '@/types'
 import SessionMapWrapper from '@/components/map/SessionMapWrapper'
@@ -190,13 +190,14 @@ export default async function DashboardPage() {
             return (
               <Link key={s.id} href={`/sessions/${s.id}`}
                 className="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow space-y-3">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${c.bg} ${c.text}`}>
+                <div className="space-y-1.5 min-w-0">
+                  <span className={`inline-block max-w-full truncate px-3 py-1 rounded-full text-xs font-semibold ${c.bg} ${c.text}`} title={s.school}>
                     {s.school}
                   </span>
                   {s.bootcamp?.name && (
-                    <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 text-indigo-600">
-                      {s.bootcamp.name}
+                    <span className="flex items-center gap-1 text-[11px] font-medium text-indigo-600" title={s.bootcamp.name}>
+                      <Layers className="w-3 h-3 shrink-0" />
+                      <span className="truncate">{s.bootcamp.name}</span>
                     </span>
                   )}
                 </div>
@@ -247,9 +248,15 @@ export default async function DashboardPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-800 truncate">{s.topic}</p>
-                    <p className="text-xs text-gray-400">
+                    <p className="text-xs text-gray-400 truncate">
                       {s.school}{s.city ? ` · ${s.city}` : ''} · {formatDate(s.date)}
                     </p>
+                    {s.bootcamp?.name && (
+                      <span className="inline-flex items-center gap-1 mt-1 max-w-full text-[10px] font-medium text-indigo-600" title={s.bootcamp.name}>
+                        <Layers className="w-3 h-3 shrink-0" />
+                        <span className="truncate">{s.bootcamp.name}</span>
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-3 text-xs text-gray-400 shrink-0">
                     <span className="flex items-center gap-1"><Users className="w-3 h-3" />{s.attendance_count}</span>

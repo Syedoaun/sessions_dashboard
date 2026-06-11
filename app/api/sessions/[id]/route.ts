@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin as supabase } from '@/lib/supabase/admin'
+import { requireAdmin } from '@/lib/auth'
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await requireAdmin(); if (denied) return denied
   const { id } = await params
   const body = await req.json()
   const { trainer_ids, ...sessionData } = body
@@ -27,6 +29,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await requireAdmin(); if (denied) return denied
   const { id } = await params
   // Soft delete — moves the session to Trash (recoverable for 30 days)
   const { error } = await supabase
