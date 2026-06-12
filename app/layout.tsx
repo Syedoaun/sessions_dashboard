@@ -7,7 +7,7 @@ import { getUser } from '@/lib/auth'
 const geist = Geist({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'SessionsHub',
+  title: 'GS Isb - CC4All',
   description: 'Track school session attendance and feedback',
 }
 
