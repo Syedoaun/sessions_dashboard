@@ -2,47 +2,39 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin as supabase } from '@/lib/supabase/admin'
 import { requireAdmin } from '@/lib/auth'
 
+// Records media rows for files the browser already uploaded directly to Storage
+// via signed URLs (see ./sign/route.ts). The public URL is derived server-side
+// from the storage path so it can't be forged by the client.
+type MediaItem = { path: string; file_name: string; type: 'image' | 'video' }
+
 export async function POST(req: NextRequest) {
   const denied = await requireAdmin(); if (denied) return denied
-  const formData = await req.formData()
-  const files = formData.getAll('files') as File[]
-  const sessionId = formData.get('session_id') as string
-  const uploadedBy = (formData.get('uploaded_by') as string) || null
 
-  if (!files.length || !sessionId) {
-    return NextResponse.json({ error: 'files and session_id are required' }, { status: 400 })
+  const { session_id, items, uploaded_by } = (await req.json()) as {
+    session_id?: string
+    items?: MediaItem[]
+    uploaded_by?: string | null
   }
 
-  const results = await Promise.allSettled(
-    files.map(async (file) => {
-      const path = `${sessionId}/${Date.now()}-${Math.random().toString(36).slice(2)}-${file.name}`
-      const buffer = await file.arrayBuffer()
-
-      const { error: uploadError } = await supabase.storage
-        .from('session-media')
-        .upload(path, buffer, { contentType: file.type })
-
-      if (uploadError) throw new Error(uploadError.message)
-
-      const { data: urlData } = supabase.storage.from('session-media').getPublicUrl(path)
-
-      const type = file.type.startsWith('video/') ? 'video' : 'image'
-      return { session_id: sessionId, type, file_url: urlData.publicUrl, file_name: file.name, uploaded_by: uploadedBy }
-    })
-  )
-
-  const succeeded = results.filter((r) => r.status === 'fulfilled')
-  const failed = results.filter((r) => r.status === 'rejected').length
-
-  if (succeeded.length === 0) {
-    return NextResponse.json({ error: 'All file uploads failed' }, { status: 500 })
+  if (!session_id || !Array.isArray(items) || !items.length) {
+    return NextResponse.json({ error: 'session_id and items are required' }, { status: 400 })
   }
 
-  const rows = succeeded.map((r) => (r as PromiseFulfilledResult<any>).value)
+  const rows = items.map((it) => {
+    const { data: urlData } = supabase.storage.from('session-media').getPublicUrl(it.path)
+    return {
+      session_id,
+      type: it.type === 'video' ? 'video' : 'image',
+      file_url: urlData.publicUrl,
+      file_name: it.file_name,
+      uploaded_by: uploaded_by ?? null,
+    }
+  })
+
   const { data, error } = await supabase.from('media').insert(rows).select()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  return NextResponse.json({ uploaded: data?.length ?? 0, failed, media: data })
+  return NextResponse.json({ uploaded: data?.length ?? 0, media: data })
 }
 
 export async function DELETE(req: NextRequest) {
