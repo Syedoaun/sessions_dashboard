@@ -137,7 +137,7 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Total Sessions',   value: rawSessions.length, icon: CalendarDays, color: 'text-blue-600',   bg: 'bg-blue-50'   },
-          { label: 'Students Reached', value: totalStudents,   icon: Users,        color: 'text-orange-500', bg: 'bg-orange-50' },
+          { label: 'Total Attendance', value: totalStudents,   icon: Users,        color: 'text-orange-500', bg: 'bg-orange-50' },
           { label: 'Feedback Forms',   value: totalFeedback,   icon: MessageSquare,color: 'text-purple-600', bg: 'bg-purple-50' },
           { label: 'Cities Covered',   value: citiesCount,     icon: MapPin,       color: 'text-emerald-600',bg: 'bg-emerald-50'},
         ].map(({ label, value, icon: Icon, color, bg }) => (

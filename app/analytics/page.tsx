@@ -170,7 +170,7 @@ export default async function AnalyticsPage() {
     .sort((a, b) => b.value - a.value)
 
   const kpis = [
-    { label: 'Total Students Reached', value: totalStudents.toLocaleString(), icon: Users,        color: 'text-blue-600',    bg: 'bg-blue-50'    },
+    { label: 'Total Attendance', value: totalStudents.toLocaleString(), icon: Users,        color: 'text-blue-600',    bg: 'bg-blue-50'    },
     { label: 'Avg Students / Session', value: avgStudents,                    icon: TrendingUp,   color: 'text-orange-500',  bg: 'bg-orange-50'  },
     { label: 'Feedback Rate',           value: `${feedbackRate}%`,            icon: MessageSquare,color: 'text-purple-600',  bg: 'bg-purple-50'  },
     { label: 'Excellent Trainer Rating',value: `${excellentPct}%`,            icon: Star,         color: 'text-yellow-500',  bg: 'bg-yellow-50'  },
@@ -207,7 +207,7 @@ export default async function AnalyticsPage() {
       </div>
 
       {/* Activity Over Time */}
-      <Section title="Activity Over Time" subtitle="Sessions and students reached each month (last 12 months)">
+      <Section title="Activity Over Time" subtitle="Sessions and total attendance each month (last 12 months)">
         <TrendChart data={trendData} />
       </Section>
 
@@ -238,10 +238,10 @@ export default async function AnalyticsPage() {
 
       {/* Geographic Reach */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Section title="Top Cities" subtitle="By students reached">
+        <Section title="Top Cities" subtitle="By Total Attendance">
           <HorizontalBarChart data={topCities} color="#2563eb" valueLabel="Students" />
         </Section>
-        <Section title="Top Schools" subtitle="By students reached">
+        <Section title="Top Schools" subtitle="By Total Attendance">
           <HorizontalBarChart data={topSchools} color="#22c55e" valueLabel="Students" />
         </Section>
       </div>
